@@ -30,8 +30,8 @@ const solver = new MPMSolver(renderer, { grid, particleTex: ptex });
 const alloc = new SlotAllocator(solver.capacity);
 const emission = new EmissionSystem();
 const phys: MaterialPhysics = {
-  viscosity: visc, density: 1, surfaceTension: parseFloat(params.get('st') ?? '0.15'), temperature: 20, stickiness: 0.1,
-  elasticity: parseFloat(params.get('e') ?? '0'), plasticity: 0, pressure: 0.4, refTemp: 20, tempSensitivity: 0,
+  viscosity: visc, density: parseFloat(params.get('d') ?? '1'), surfaceTension: parseFloat(params.get('st') ?? '0.15'), temperature: 20, stickiness: 0.1,
+  elasticity: parseFloat(params.get('e') ?? '0'), plasticity: 0, pressure: parseFloat(params.get('pr') ?? '0.4'), refTemp: 20, tempSensitivity: 0,
   freezePoint: -1000, coolRate: 0, boilPoint: null, solidStiffness: 0.5, solidDamping: 0.5,
 };
 solver.setMaterial(0, physicsToUniforms(phys, solver.dx));

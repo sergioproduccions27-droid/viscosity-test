@@ -54,7 +54,12 @@ export function physicsToUniforms(p: MaterialPhysics, dx: number): MaterialUnifo
   }
   const yieldStrain = p.plasticity > 0 ? 0.03 + 0.7 * Math.pow(1 - p.plasticity, 1.5) : 1e9;
   const mixRate = 2.8 * Math.pow(1 - p.viscosity, 3) + 0.015;
-  const cohesion = 0.08 * p.surfaceTension; // tension floor as a fraction of the bulk modulus
+  // Tension floor as a fraction of the bulk modulus. Very viscous liquids pinch off far more
+  // slowly (capillary time ~ ηR/σ), so the beading drive is reduced as viscosity rises.
+  // 0.04 is the largest floor that stays free of the MPM tensile instability (tested).
+  // Expressed relative to K = ρc², so divide by c² to keep the absolute tension independent
+  // of the stiffness slider (stiffer liquids must not pull harder).
+  const cohesion = 0.04 * Math.pow(p.surfaceTension, 0.8) * Math.min(1, (1.9 * 1.9) / (c * c)) * (1 - 0.85 * smooth(0.45, 0.95, p.viscosity));
   const stickRate = 140 * p.stickiness * p.stickiness;
   const solidDamp = 20 + 380 * p.solidDamping;
 

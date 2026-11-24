@@ -119,6 +119,7 @@ ${materials}
 uniform sampler2D T0, T1, T2, T3, T4, T5, T6;
 uniform float uDt;
 uniform float uVp0;
+uniform float uStiff; // < 1 when the sub-step budget cannot resolve the full stiffness (CFL)
 layout(location = 0) out vec4 o0;
 layout(location = 1) out vec4 o1;
 layout(location = 2) out vec4 o2;
@@ -150,7 +151,7 @@ void main() {
 
   // Pressure from grid volume fraction (Tait EOS); tension allowed for cohesion.
   float phi = clamp(a1.w, 0.25, 3.0);
-  float K = mA.x * mA.y;
+  float K = mA.x * mA.y * uStiff;
   // Below rest density the liquid may pull (tension) but only down to a floor: a constant
   // surface tension at the free surface instead of a collapse of thin streams.
   float p = phi >= 1.0 ? K * 0.25 * (phi * phi * phi * phi - 1.0) : max(K * (phi - 1.0), -K * mA.z);
@@ -158,7 +159,7 @@ void main() {
   // Viscoelastic / elastic deviatoric stress from b.
   mat3 b = mat3(a4.x, a4.w, a5.x, a4.w, a4.y, a5.y, a5.x, a5.y, a4.z);
   float cs2 = mix(mB.y, mD.x, solid);
-  float G = mA.x * cs2;
+  float G = mA.x * cs2 * uStiff;
   float trb = (a4.x + a4.y + a4.z) / 3.0;
   mat3 tau = mat3(-p) + G * (b - mat3(trb));
 

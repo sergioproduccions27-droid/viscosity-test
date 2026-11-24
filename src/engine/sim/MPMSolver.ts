@@ -145,6 +145,7 @@ export class MPMSolver {
     uAtlas: { value: new THREE.Vector2() } as U<THREE.Vector2>,
     uDt: { value: 1 / 240 } as U<number>,
     uVp0: { value: 0.166 } as U<number>,
+    uStiff: { value: 1 } as U<number>,
     uMatA: { value: Array.from({ length: MAX_MATS }, () => new THREE.Vector4(1, 1, 0, 1)) },
     uMatB: { value: Array.from({ length: MAX_MATS }, () => new THREE.Vector4(0, 0, 1, 1e9)) },
     uMatC: { value: Array.from({ length: MAX_MATS }, () => new THREE.Vector4(20, 0, -1e5, 0)) },
@@ -242,7 +243,7 @@ export class MPMSolver {
     const prims = { uPrims: u.uPrims, uPrimCount: u.uPrimCount };
 
     this.prepMat = raw(fullscreenVert, prepFrag, {
-      ...common, ...mats, uDt: u.uDt, uVp0: u.uVp0,
+      ...common, ...mats, uDt: u.uDt, uVp0: u.uVp0, uStiff: u.uStiff,
       T0: tex(), T1: tex(), T2: tex(), T3: tex(), T4: tex(), T5: tex(), T6: tex(),
     });
     const splatMat = raw(splatVert, splatFrag, {

@@ -76,6 +76,9 @@ void main() {
     float top = smoothstep(0.93, 0.96, d.y);
     float rim = smoothstep(0.92, 0.95, dot(d, normalize(vec3(-0.2, 0.35, -0.9))));
     col += vec3(4.0) * key + vec3(1.6) * fill + vec3(2.2) * top + uGlow * 2.0 * rim;
+    // soft studio light strip around the horizon: long highlight streaks on glossy streams
+    float strip = smoothstep(0.11, 0.0, abs(d.y - 0.18)) * (0.55 + 0.45 * sin(atan(d.z, d.x) * 2.0));
+    col += vec3(1.3) * strip;
   }
   gl_FragColor = vec4(col, 1.0);
 }

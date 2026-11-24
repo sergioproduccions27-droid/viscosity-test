@@ -86,7 +86,7 @@ export const MATERIALS: Record<MaterialId, Material> = {
     rainbow: false,
     palette: ['#dfe3ea', '#c3c9d2', '#f3f5f8'],
     physics: phys({ viscosity: 0.06, density: 13.5, surfaceTension: 1, stickiness: 0, pressure: 0.75, freezePoint: -39, tempSensitivity: 0.004, boilPoint: 357, solidStiffness: 1, solidDamping: 0.5 }),
-    look: look({ transparency: 0, reflectivity: 1, roughness: 0.03, metallic: 1, solidColor: '#9aa1ad' }),
+    look: look({ transparency: 0, reflectivity: 1, roughness: 0.09, metallic: 1, solidColor: '#9aa1ad' }),
   },
   glass: {
     id: 'glass',

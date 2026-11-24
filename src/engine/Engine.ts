@@ -306,11 +306,12 @@ export class Engine {
     const h = Math.max(1, this.container.clientHeight);
     const kVis = h / (h + this.bottomInsetTarget(useStore.getState()));
     const tanH = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * kVis;
-    const needW = 0.42; // half-width to keep in view
-    const needH = 0.6;
+    // keep the stage (platform → nozzle) in view; portrait screens frame tighter like the reference
+    const needW = aspect < 1 ? 0.27 : 0.4;
+    const needH = aspect < 1 ? 0.44 : 0.5;
     const dist = Math.max(needH / tanH, needW / (aspect * tanH)) * 1.02;
-    const dir = new THREE.Vector3(0, 0.12, 1).normalize();
-    const target = new THREE.Vector3(0, 0.66, 0);
+    const dir = new THREE.Vector3(0, 0.16, 1).normalize();
+    const target = new THREE.Vector3(0, 0.74, 0);
     const pos = target.clone().addScaledVector(dir, dist);
     if (!animate) {
       this.controls.target.copy(target);
@@ -523,8 +524,13 @@ export class Engine {
     const g = this.gravity.length();
     const vEst = Math.sqrt(2 * g * 1.1) + flow + 0.4;
     const vmax = Math.max(cMax, vEst);
-    const n = Math.ceil((dt * vmax) / this.solver.dx / 0.5);
-    return THREE.MathUtils.clamp(n, 1, TIERS[this.tier].maxSub);
+    const need = Math.ceil((dt * vmax) / this.solver.dx / 0.42);
+    const n = THREE.MathUtils.clamp(need, 1, TIERS[this.tier].maxSub);
+    // Out of sub-step budget (slow frame or very stiff liquid): soften the pressure / elastic
+    // stiffness so the wave speed still satisfies the CFL condition instead of blowing up.
+    const cAllowed = (0.42 * this.solver.dx * n) / dt;
+    this.solver.u.uStiff.value = cMax > cAllowed ? Math.max(0.05, (cAllowed / cMax) ** 2) : 1;
+    return n;
   }
 
   /** Obstacle collider with a kinematic velocity estimated from how it was dragged. */
