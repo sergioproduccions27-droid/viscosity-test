@@ -1,4 +1,4 @@
-import { Activity, Blocks, ChevronDown, Flame, Info as InfoIcon, Maximize2, Orbit, Palette, Rocket, SlidersHorizontal, Sparkles, Trophy, Volume2, VolumeX, Waves } from 'lucide-react';
+import { Activity, Blocks, ChevronDown, Flame, Info as InfoIcon, Maximize2, Palette, Rocket, SlidersHorizontal, Sparkles, Trophy, Volume2, VolumeX, Waves } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { GameMode } from '../engine/types';
 import { useStore } from '../state/store';
@@ -88,12 +88,35 @@ export function ModeSelect() {
   );
 }
 
-export function TopBar() {
+export function QuickButtons({ withPanelToggle }: { withPanelToggle: boolean }) {
   const sound = useStore((s) => s.sound);
   const showStats = useStore((s) => s.showStats);
   const tooltips = useStore((s) => s.tooltips);
-  const panelHidden = useStore((s) => s.uiHidden);
-  void panelHidden;
+  return (
+    <>
+      <button className={`icon-btn ${sound ? 'active' : ''}`} type="button" aria-label="Sound" data-testid="sound-toggle" onClick={() => useStore.setState({ sound: !sound })} title="Sound (M)">
+        {sound ? <Volume2 size={18} /> : <VolumeX size={18} />}
+      </button>
+      <button className={`icon-btn ${showStats ? 'active' : ''}`} type="button" aria-label="Physics stats" data-testid="stats-toggle" onClick={() => useStore.setState({ showStats: !showStats })} title="Physics statistics">
+        <Activity size={18} />
+      </button>
+      <button className={`icon-btn ${tooltips ? 'active' : ''}`} type="button" aria-label="Educational tooltips" onClick={() => useStore.setState({ tooltips: !tooltips })} title="Educational tooltips">
+        <InfoIcon size={18} />
+      </button>
+      <button className="icon-btn" type="button" aria-label="Cinematic fullscreen" onClick={() => void toggleCinematic()} title="Cinematic fullscreen (F)">
+        <Maximize2 size={18} />
+      </button>
+      {withPanelToggle && (
+        <button className="icon-btn" type="button" aria-label="Open laboratory controls" data-testid="panel-toggle" onClick={() => useStore.setState({ panelOpen: true })} title="Laboratory controls">
+          <SlidersHorizontal size={18} />
+        </button>
+      )}
+    </>
+  );
+}
+
+export function TopBar() {
+  const panelOpen = useStore((s) => s.panelOpen);
   return (
     <>
       <div className="topbar glass">
@@ -103,28 +126,16 @@ export function TopBar() {
           className="icon-btn sheet-btn"
           type="button"
           aria-label="Open controls"
-          onClick={() => window.dispatchEvent(new CustomEvent('vp:toggle-panel'))}
+          onClick={() => useStore.setState({ panelOpen: !useStore.getState().panelOpen })}
         >
           <SlidersHorizontal size={18} />
         </button>
       </div>
-      <div className="top-right glass">
-        <button className={`icon-btn ${sound ? 'active' : ''}`} type="button" aria-label="Sound" data-testid="sound-toggle" onClick={() => useStore.setState({ sound: !sound })} title="Sound (M)">
-          {sound ? <Volume2 size={18} /> : <VolumeX size={18} />}
-        </button>
-        <button className={`icon-btn ${showStats ? 'active' : ''}`} type="button" aria-label="Physics stats" data-testid="stats-toggle" onClick={() => useStore.setState({ showStats: !showStats })} title="Physics statistics">
-          <Activity size={18} />
-        </button>
-        <button className={`icon-btn ${tooltips ? 'active' : ''}`} type="button" aria-label="Educational tooltips" onClick={() => useStore.setState({ tooltips: !tooltips })} title="Educational tooltips">
-          <InfoIcon size={18} />
-        </button>
-        <button className="icon-btn" type="button" aria-label="Cinematic fullscreen" onClick={() => void toggleCinematic()} title="Cinematic fullscreen (F)">
-          <Maximize2 size={18} />
-        </button>
-        <button className="icon-btn" type="button" aria-label="Toggle control panel" data-testid="panel-toggle" onClick={() => window.dispatchEvent(new CustomEvent('vp:toggle-panel'))} title="Controls">
-          <Orbit size={18} />
-        </button>
-      </div>
+      {!panelOpen && (
+        <div className="top-right glass">
+          <QuickButtons withPanelToggle />
+        </div>
+      )}
     </>
   );
 }

@@ -8,6 +8,7 @@ export function StatsPanel() {
   const perf = useStore((s) => s.perf);
   const st = useStore((s) => s.stats);
   const ambient = useStore((s) => s.world.ambientTemp);
+  const panelOpen = useStore((s) => s.panelOpen);
   const [hist, setHist] = useState<number[]>([]);
   useEffect(() => {
     if (show) setHist((h) => [...h.slice(-39), perf.fps]);
@@ -17,7 +18,7 @@ export function StatsPanel() {
   const pts = hist.map((v, i) => `${(i / 39) * 100},${26 - (v / max) * 24}`).join(' ');
   const fpsColor = perf.fps >= 50 ? 'var(--good)' : perf.fps >= 30 ? 'var(--warn)' : '#ff6b8b';
   return (
-    <div className="stats glass" data-testid="stats">
+    <div className={`stats glass ${panelOpen ? '' : 'wide'}`} data-testid="stats">
       <div className="fps" style={{ color: fpsColor }}>
         {perf.fps.toFixed(0)}
         <small>FPS · {perf.frameMs.toFixed(1)} ms</small>
@@ -151,7 +152,7 @@ export function Hints() {
     if (!show) return;
     const t = setTimeout(() => dismiss(), 14000);
     return () => clearTimeout(t);
-  });
+  }, [show]);
   const dismiss = () => {
     setShow(false);
     try {

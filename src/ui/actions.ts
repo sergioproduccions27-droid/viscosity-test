@@ -39,15 +39,7 @@ export async function takeScreenshot() {
 /** Small JPEG thumbnail of the current frame (for saved experiments). */
 export async function thumbnail(): Promise<string | undefined> {
   if (!engine) return undefined;
-  const blob = await engine.screenshot();
-  if (!blob) return undefined;
-  const bmp = await createImageBitmap(blob);
-  const c = document.createElement('canvas');
-  const w = 160;
-  c.width = w;
-  c.height = Math.round((bmp.height / bmp.width) * w);
-  c.getContext('2d')!.drawImage(bmp, 0, 0, c.width, c.height);
-  return c.toDataURL('image/jpeg', 0.72);
+  return engine.thumbnail(160);
 }
 
 export async function toggleRecording() {

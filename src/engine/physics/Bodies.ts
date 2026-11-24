@@ -159,6 +159,12 @@ export class BodySystem {
       }
     }
     this.world.step(1 / 120, dt, 4);
+    // keep overlapping spawns from launching bodies out of the world
+    for (const d of this.dyn.values()) {
+      const v = d.body.velocity;
+      const sp = v.length();
+      if (sp > 4) v.scale(4 / sp, v);
+    }
     this.fellOut = [];
     for (const [id, d] of this.dyn) if (d.body.position.y < -0.6) this.fellOut.push(id);
   }

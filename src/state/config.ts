@@ -81,6 +81,7 @@ export function applyConfig(raw: SceneConfig, mode: GameMode = 'sandbox'): boole
     environment: c.environment,
     selection: null,
     hud: null,
+    sceneFromConfig: s.mode !== mode,
     revision: s.revision + 1,
   });
   return true;

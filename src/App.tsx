@@ -31,6 +31,8 @@ export default function App() {
   const engineError = useStore((s) => s.engineError);
   const uiHidden = useStore((s) => s.uiHidden);
   const ready = useStore((s) => s.engineReady);
+  const panelOpen = useStore((s) => s.panelOpen);
+  const hasHud = useStore((s) => !!s.hud && s.mode !== 'sandbox' && s.mode !== 'relax');
 
   useEffect(() => {
     if (!host.current) return;
@@ -63,7 +65,7 @@ export default function App() {
     <div className="app">
       <div className="viewport" ref={host} />
       {!ready && <div className="loading">LOADING LIQUIDS…</div>}
-      <div className={`ui ${uiHidden ? 'hidden' : ''}`}>
+      <div className={`ui ${uiHidden ? 'hidden' : ''} ${panelOpen && !uiHidden ? 'panel-open' : ''} ${hasHud ? 'has-hud' : ''}`}>
         <TopBar />
         <ViscosityIndicator />
         <ToolDock />

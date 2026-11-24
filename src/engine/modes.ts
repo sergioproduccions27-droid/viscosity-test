@@ -64,19 +64,24 @@ function resetScene(p: Partial<AppState>) {
     valves: {},
     hud: null,
     revision: s.revision + 1,
+    // game modes start with a clean view; the lab panel stays one click away
+    panelOpen: p.panelOpen ?? false,
     ...p,
   });
 }
 
 // ---------------------------------------------------------------- sandbox
 class SandboxMode implements ModeController {
-  constructor(private engine: Engine) {}
+  constructor(private engine: Engine, private prev: string) {}
   enter() {
     const s = useStore.getState();
-    // Only rebuild the default stage if we come from a game mode (keeps shared/loaded scenes intact)
-    if (s.hud || s.world.gravityMode !== 'normal' || s.world.walls || s.environment === 'space') {
+    // Rebuild the default stage when coming back from a game mode — unless a saved / shared
+    // experiment was just loaded (it sets sceneFromConfig).
+    if (s.sceneFromConfig) {
+      useStore.setState({ sceneFromConfig: false });
+    } else if (this.prev && this.prev !== 'sandbox') {
       const e = defaultEmitter();
-      resetScene({ emitters: [e], selectedEmitterId: e.id, environment: 'amethyst', tool: 'stir' });
+      resetScene({ emitters: [e], selectedEmitterId: e.id, environment: 'amethyst', tool: 'stir', panelOpen: window.innerWidth > 900 });
       this.engine.frameCamera(true);
     }
     setHud(null);
@@ -103,7 +108,7 @@ class TowerMode implements ModeController {
     const e = defaultEmitter(m, { enabled: false, position: [0, 1.1, 0], thickness: 0.026, flowSpeed: 0.7 });
     resetScene({ emitters: [e], selectedEmitterId: e.id, environment: 'amethyst', tool: 'select', selection: { kind: 'emitter', id: e.id } });
     this.engine.frameCamera(true);
-    this.engine.stage.group.parent?.add(this.marker, this.bestMarker);
+    this.engine.overlay.add(this.marker, this.bestMarker);
     this.reset();
   }
   private reset() {
@@ -225,7 +230,7 @@ class ColorMixMode implements ModeController {
   constructor(private engine: Engine) {}
   enter() {
     const m = cloneMaterial(MATERIALS.paint);
-    m.physics.viscosity = 0.12;
+    m.physics.viscosity = 0.18;
     m.physics.stickiness = 0.1;
     const emitters: Emitter[] = PRIMARIES.map((p, i) => {
       const a = -Math.PI / 2 + (i - 1.5) * 0.55;
@@ -234,8 +239,8 @@ class ColorMixMode implements ModeController {
         position: [Math.cos(a) * 0.075, 0.86, Math.sin(a) * 0.075 + 0.02],
         streams: 1,
         colors: [p.color],
-        thickness: 0.017,
-        flowSpeed: 0.55,
+        thickness: 0.024,
+        flowSpeed: 0.6,
         twistRadius: 0,
         twistSpeed: 0,
         enabled: false,
@@ -244,7 +249,7 @@ class ColorMixMode implements ModeController {
     const scale = 1.55;
     const d = OBSTACLE_DEFS.container;
     this.basin = { id: uid('o'), kind: 'container', position: [0, PLATFORM_TOP - d.pts[1] * scale + d.thickness * scale + 0.004, 0], rotation: [0, 0, 0], scale };
-    resetScene({ emitters, selectedEmitterId: emitters[0].id, obstacles: [this.basin], environment: 'studio', tool: 'stir', toolSize: 0.06 });
+    resetScene({ emitters, selectedEmitterId: emitters[0].id, obstacles: [this.basin], environment: 'midnight', tool: 'stir', toolSize: 0.06 });
     this.engine.frameCamera(true);
     this.newTarget();
   }
@@ -352,7 +357,8 @@ class FillMode implements ModeController {
     for (const c of this.cups) c.ring.removeFromParent();
     this.cups = [];
     const m = cloneMaterial(MATERIALS.paint);
-    m.physics.viscosity = 0.22;
+    m.physics.viscosity = 0.36;
+    m.physics.stickiness = 0.3;
     const e = defaultEmitter(m, { id: 'fill-src', position: [0, 1.05, 0], streams: 1, thickness: 0.018, flowSpeed: 0.5, twistRadius: 0, twistSpeed: 0, enabled: false, colors: ['#2a9dff'] });
     const L = this.level;
     const count = Math.min(3, 1 + Math.floor((L - 1) / 2));
@@ -371,7 +377,7 @@ class FillMode implements ModeController {
       };
       obstacles.push(spec);
       const rg = ring((d.pts[2] - d.thickness) * scale * 0.98, '#ffd84d', 0.9);
-      this.engine.stage.group.parent?.add(rg);
+      this.engine.overlay.add(rg);
       this.cups.push({ spec, fill: 0, ring: rg });
     }
     if (L >= 3) {
@@ -660,10 +666,10 @@ class ZeroGMode implements ModeController {
   exit() {}
 }
 
-export function createMode(mode: GameMode, engine: Engine): ModeController | null {
+export function createMode(mode: GameMode, engine: Engine, prev = ''): ModeController | null {
   switch (mode) {
     case 'sandbox':
-      return new SandboxMode(engine);
+      return new SandboxMode(engine, prev);
     case 'tower':
       return new TowerMode(engine);
     case 'colormix':

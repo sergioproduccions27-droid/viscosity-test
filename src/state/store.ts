@@ -107,6 +107,7 @@ export interface AppState {
   volume: number;
   cinematic: boolean;
   uiHidden: boolean;
+  panelOpen: boolean;
   recording: boolean;
   recordSeconds: number;
   selection: Selection;
@@ -119,6 +120,7 @@ export interface AppState {
   engineReady: boolean;
   revision: number; // bumps when the scene must be fully re-applied (load/share/mode)
   pouring: boolean; // hold-to-pour in game modes
+  sceneFromConfig: boolean; // a saved/shared scene was just applied
   valves: Record<string, number>;
 
   // actions
@@ -166,6 +168,7 @@ export const useStore = create<AppState>((set, get) => {
     volume: 0.6,
     cinematic: false,
     uiHidden: false,
+    panelOpen: typeof window !== 'undefined' ? !window.matchMedia('(max-width: 900px)').matches : true,
     recording: false,
     recordSeconds: 0,
     selection: null,
@@ -179,6 +182,7 @@ export const useStore = create<AppState>((set, get) => {
     revision: 0,
     pouring: false,
     valves: {},
+    sceneFromConfig: false,
 
     set: (p) => set(p),
     selectedEmitter: () => {

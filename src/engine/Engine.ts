@@ -63,7 +63,7 @@ export class Engine {
   readonly camera: THREE.PerspectiveCamera;
   readonly controls: OrbitControls;
   readonly gizmo: TransformControls;
-  private overlay = new THREE.Scene();
+  readonly overlay = new THREE.Scene();
   private transparentScene = new THREE.Scene();
   readonly env: EnvironmentSystem;
   readonly stage = new Stage();
@@ -110,6 +110,8 @@ export class Engine {
   private recordChunks: Blob[] = [];
   private recordStart = 0;
   mode: ModeController | null = null;
+  private modeId = '';
+  private obstaclePrev = new Map<string, { p: THREE.Vector3; r: THREE.Euler }>();
   /** extra transient emitters driven by modes / the pour tool */
   extraEmitters: Emitter[] = [];
   extraForces: ForceField[] = [];
@@ -120,6 +122,13 @@ export class Engine {
   private gizmoDragging = false;
   private cameraShake = 0;
   private autoRotate = false;
+  private viewInset = 0;
+  private viewInsetB = 0;
+  private resizePending = false;
+  /** On phones the tool strip + transport cover the bottom of the screen: lift the stage. */
+  private bottomInsetTarget(s: AppState) {
+    return this.container.clientWidth <= 900 && !s.uiHidden ? Math.min(200, this.container.clientHeight * 0.24) : 0;
+  }
 
   constructor(private container: HTMLElement) {
     const canvas = document.createElement('canvas');
@@ -252,6 +261,9 @@ export class Engine {
     this.keyLight.shadow.map = null;
     this.lastObstacles = null;
     this.lastBodies = null;
+    this.lastEmitters = null;
+    this.lastEnv = '';
+    this.slotByEmitter.clear();
     this.onResize();
     useStore.setState({ activeTier: tier });
   }
@@ -290,8 +302,10 @@ export class Engine {
   };
 
   frameCamera(animate = false) {
-    const aspect = this.camera.aspect;
-    const tanH = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2));
+    const aspect = this.container.clientWidth / Math.max(1, this.container.clientHeight);
+    const h = Math.max(1, this.container.clientHeight);
+    const kVis = h / (h + this.bottomInsetTarget(useStore.getState()));
+    const tanH = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * kVis;
     const needW = 0.42; // half-width to keep in view
     const needH = 0.6;
     const dist = Math.max(needH / tanH, needW / (aspect * tanH)) * 1.02;
@@ -346,10 +360,8 @@ export class Engine {
   }
 
   select(sel: AppState['selection']) {
-    const s = useStore.getState();
     useStore.setState({ selection: sel });
     if (sel?.kind === 'emitter') useStore.setState({ selectedEmitterId: sel.id });
-    void s;
   }
 
   private onGizmoChange() {
@@ -398,6 +410,20 @@ export class Engine {
       this.alloc.reset();
     }
   }
+
+  /** Small JPEG data URL of the next rendered frame (drawn right after rendering). */
+  thumbnail(width = 160): Promise<string | undefined> {
+    return new Promise((res) => {
+      this.thumbCb = (canvas) => {
+        const c = document.createElement('canvas');
+        c.width = width;
+        c.height = Math.round((canvas.height / canvas.width) * width);
+        c.getContext('2d')?.drawImage(canvas, 0, 0, c.width, c.height);
+        res(c.toDataURL('image/jpeg', 0.72));
+      };
+    });
+  }
+  private thumbCb: ((c: HTMLCanvasElement) => void) | null = null;
 
   screenshot(): Promise<Blob | null> {
     return new Promise((res) => {
@@ -501,6 +527,20 @@ export class Engine {
     return THREE.MathUtils.clamp(n, 1, TIERS[this.tier].maxSub);
   }
 
+  /** Obstacle collider with a kinematic velocity estimated from how it was dragged. */
+  private movingObstaclePrim(o: AppState['obstacles'][number], dt: number): Prim {
+    const prim = obstaclePrim(o);
+    const prev = this.obstaclePrev.get(o.id);
+    const p = new THREE.Vector3(...o.position);
+    const r = new THREE.Euler(o.rotation[0], o.rotation[1], o.rotation[2], 'XYZ');
+    if (prev && dt > 0) {
+      prim.linVel = p.clone().sub(prev.p).divideScalar(dt).clampLength(0, 3);
+      prim.angVel = new THREE.Vector3((r.x - prev.r.x) / dt, (r.y - prev.r.y) / dt, (r.z - prev.r.z) / dt).clampLength(0, 10);
+    }
+    this.obstaclePrev.set(o.id, { p, r });
+    return prim;
+  }
+
   private toolForces(s: AppState): { forces: ForceField[]; brush: BrushAction | null; pour: Emitter | null; stir: number } {
     const p = this.input.state;
     const forces: ForceField[] = [...this.extraForces];
@@ -548,7 +588,7 @@ export class Engine {
             streams: 1,
             twistRadius: 0,
             twistSpeed: 0,
-            thickness: Math.max(0.012, size * 0.3),
+            thickness: Math.max(0.017, size * 0.35),
             flowSpeed: 0.5 + 0.8 * k,
             enabled: true,
           };
@@ -573,6 +613,11 @@ export class Engine {
   };
 
   private tick() {
+    // resizing clears the canvas, so it must happen before (not after) this frame's render
+    if (this.resizePending) {
+      this.resizePending = false;
+      this.onResize();
+    }
     const realDt = Math.min(this.clock.getDelta(), 0.1);
     const s = useStore.getState();
     this.frame++;
@@ -584,16 +629,18 @@ export class Engine {
       this.lastMode = s.mode;
       this.lastRevision = s.revision;
       if (modeChanged) {
+        const prev = this.mode ? this.modeId : '';
         this.mode?.exit();
-        this.mode = createMode(s.mode, this);
+        this.modeId = s.mode;
+        this.mode = createMode(s.mode, this, prev);
         this.mode?.enter();
       }
       this.clearLiquid(false);
       this.lastEmitters = null;
     }
     if (s.environment !== this.lastEnv) this.applyEnvironment(s.environment);
-    this.sound.setEnabled(s.sound);
-    this.sound.setVolume(s.volume);
+    if (s.sound !== this.sound.enabled) this.sound.setEnabled(s.sound);
+    if (s.volume !== this.sound.volume) this.sound.setVolume(s.volume);
 
     const w = s.world;
     // ---- gravity
@@ -644,7 +691,7 @@ export class Engine {
     // ---- solids
     const prims: Prim[] = [
       ...stagePrims({ showPlatform: w.showPlatform, platformQuat: pq, platformAngVel: angVel }),
-      ...s.obstacles.map(obstaclePrim),
+      ...s.obstacles.map((o) => this.movingObstaclePrim(o, simDt)),
       ...this.bodies.prims(),
     ];
     this.solver.setPrims(prims);
@@ -728,7 +775,22 @@ export class Engine {
     const visc = s.selectedEmitter().material.physics.viscosity;
     this.sound.update(realDt, s.paused ? 0 : Math.min(1, flowing / 3), visc, s.paused ? 0 : this.landing, s.paused ? 0 : tool.stir);
 
-    // ---- camera
+    // ---- camera (keep the stage centred in the area not covered by the side panel)
+    const desktop = this.container.clientWidth > 900;
+    const inset = desktop && s.panelOpen && !s.uiHidden ? 376 : 0;
+    const insetB = this.bottomInsetTarget(s);
+    const k = Math.min(1, realDt * 6);
+    this.viewInset += (inset - this.viewInset) * k;
+    this.viewInsetB += (insetB - this.viewInsetB) * k;
+    if (Math.abs(this.viewInset) > 0.5 || Math.abs(this.viewInsetB) > 0.5) {
+      const w = this.container.clientWidth;
+      const h = this.container.clientHeight;
+      this.camera.setViewOffset(w + this.viewInset, h + this.viewInsetB, this.viewInset, this.viewInsetB, w, h);
+    } else if (this.camera.view?.enabled) {
+      this.camera.clearViewOffset();
+      this.camera.aspect = this.container.clientWidth / Math.max(1, this.container.clientHeight);
+      this.camera.updateProjectionMatrix();
+    }
     this.controls.autoRotate = this.autoRotate || s.cinematic;
     this.updateOrbitButtons(s);
     if (this.camTween) {
@@ -883,6 +945,11 @@ export class Engine {
 
     if (shakeOffset.lengthSq() > 0) this.camera.position.sub(shakeOffset);
 
+    if (this.thumbCb) {
+      const cb = this.thumbCb;
+      this.thumbCb = null;
+      cb(r.domElement);
+    }
     if (this.screenshotCb) {
       const cb = this.screenshotCb;
       this.screenshotCb = null;
@@ -926,11 +993,11 @@ export class Engine {
       if (a.slowTime >= 1.5 && this.pixelRatio > 0.6) {
         this.pixelRatio = Math.max(0.6, this.pixelRatio * 0.85);
         a.slowTime = 0;
-        this.onResize();
+        this.resizePending = true;
       } else if (a.fastTime >= 4 && this.pixelRatio < cap) {
         this.pixelRatio = Math.min(cap, this.pixelRatio * 1.1);
         a.fastTime = 0;
-        this.onResize();
+        this.resizePending = true;
       }
       // auto tier downgrade during the first seconds
       const since = (performance.now() - this.startTime) / 1000;

@@ -1,5 +1,5 @@
 import { Box, CircleDot, Container, Copy, Dice5, Download, FlaskConical, Globe2, Layers, Plus, Save, Settings2, Shapes, Trash2, Triangle, Waves, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ENVIRONMENTS } from '../engine/render/Environment';
 import { kinematicViscosity, soundSpeed } from '../engine/sim/materialUniforms';
 import type { GravityMode, MaterialId, QualityTier } from '../engine/types';
@@ -8,6 +8,7 @@ import { MATERIALS, MATERIAL_ORDER, MATERIAL_TAGLINE } from '../state/materials'
 import { MAX_EMITTERS, useStore } from '../state/store';
 import { copyShareLink, getEngine, randomize, thumbnail } from './actions';
 import { Info, Section, Seg, Slider, Toggle, pct } from './controls';
+import { QuickButtons } from './TopBar';
 
 type Tab = 'liquid' | 'physics' | 'flow' | 'world' | 'objects' | 'library' | 'settings';
 const TABS: { id: Tab; label: string; icon: typeof Waves }[] = [
@@ -398,17 +399,17 @@ function SettingsTab() {
 
 export function ControlPanel() {
   const [tab, setTab] = useState<Tab>('liquid');
-  const mobile = useMemo(() => window.matchMedia('(max-width: 900px)').matches, []);
-  const [open, setOpen] = useState(!mobile);
+  const open = useStore((s) => s.panelOpen);
+  const setOpen = (v: boolean) => useStore.setState({ panelOpen: v });
   useEffect(() => {
-    const h = () => setOpen((o) => !o);
+    const h = () => useStore.setState({ panelOpen: !useStore.getState().panelOpen });
     window.addEventListener('vp:toggle-panel', h);
     return () => window.removeEventListener('vp:toggle-panel', h);
   }, []);
   useEffect(() => {
     const h = (e: Event) => {
       setTab((e as CustomEvent<Tab>).detail);
-      setOpen(true);
+      useStore.setState({ panelOpen: true });
     };
     window.addEventListener('vp:open-tab', h);
     return () => window.removeEventListener('vp:open-tab', h);
@@ -417,7 +418,10 @@ export function ControlPanel() {
     <aside className={`panel glass ${open ? '' : 'collapsed'}`} aria-label="Controls" data-testid="panel">
       <div className="panel-head">
         <h3>Laboratory</h3>
-        <button className="icon-btn" type="button" aria-label="Close panel" onClick={() => setOpen(false)}><X size={18} /></button>
+        <div className="row panel-quick">
+          <QuickButtons withPanelToggle={false} />
+          <button className="icon-btn" type="button" aria-label="Close panel" data-testid="panel-close" onClick={() => setOpen(false)}><X size={18} /></button>
+        </div>
       </div>
       <div className="tabs" role="tablist">
         {TABS.map((t) => {

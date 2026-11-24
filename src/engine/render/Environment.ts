@@ -19,7 +19,7 @@ export const ENVIRONMENTS: EnvPreset[] = [
   { id: 'amethyst', name: 'Amethyst', top: '#7d5fb0', bottom: '#2a1a46', glow: '#6c50a0', fog: '#2c1c48', light: '#fff6ee', rim: '#b9a0ff', stars: 0, grid: 0, exposure: 1.0, slab: '#c9c6cc' },
   { id: 'midnight', name: 'Midnight', top: '#24345e', bottom: '#05070f', glow: '#3d5fa8', fog: '#070a16', light: '#dfe8ff', rim: '#5b8cff', stars: 0.35, grid: 0, exposure: 1.05, slab: '#9ea4b5' },
   { id: 'sunset', name: 'Sunset', top: '#ff9e6e', bottom: '#4b1838', glow: '#ffc78f', fog: '#4b1838', light: '#ffe2c2', rim: '#ff7aa8', stars: 0, grid: 0, exposure: 0.95, slab: '#d8c3bd' },
-  { id: 'studio', name: 'Studio', top: '#f1eef8', bottom: '#9c96b2', glow: '#ffffff', fog: '#a39dba', light: '#ffffff', rim: '#ffffff', stars: 0, grid: 0, exposure: 0.85, slab: '#e3e1e8' },
+  { id: 'studio', name: 'Studio', top: '#d8d3e6', bottom: '#77708f', glow: '#ffffff', fog: '#7a7392', light: '#ffffff', rim: '#ffffff', stars: 0, grid: 0, exposure: 0.85, slab: '#e3e1e8' },
   { id: 'sandstone', name: 'Sandstone', top: '#7a4e34', bottom: '#f0c49a', glow: '#ffd7a8', fog: '#e8b88c', light: '#fff1de', rim: '#ffcf9a', stars: 0, grid: 0, exposure: 0.9, slab: '#e8d9c8' },
   { id: 'neon', name: 'Neon Grid', top: '#1a0b3a', bottom: '#03010a', glow: '#ff3fd8', fog: '#06021a', light: '#e6d9ff', rim: '#29f0ff', stars: 0.2, grid: 1, exposure: 1.1, slab: '#8d86a8' },
   { id: 'space', name: 'Deep Space', top: '#0c0a24', bottom: '#000000', glow: '#4b2a8a', fog: '#000000', light: '#ffffff', rim: '#7aa7ff', stars: 1, grid: 0, exposure: 1.1, slab: '#9b98a8' },
